@@ -21,9 +21,9 @@ public class Utf8JsonFormatter(
     IFormatProvider? formatProvider = null,
     int bufferSize = 64) : ITextFormatter
 {
-    private const string NoQuotingOfStrings = "l";
     private readonly string _closingDelimiter = closingDelimiter ?? Environment.NewLine;
     private readonly CultureInfo _formatProvider = formatProvider as CultureInfo ?? CultureInfo.InvariantCulture;
+    private const string NoQuotingOfStrings = "l";
 
     public void Format(LogEvent? logEvent, TextWriter? output)
     {
@@ -104,7 +104,10 @@ public class Utf8JsonFormatter(
         output.Write(_closingDelimiter);
     }
 
-    public virtual Utf8JsonWriter CreateWriter(Stream stream, JsonWriterOptions options) => new (stream, options);
+    public virtual Utf8JsonWriter CreateWriter(Stream stream, JsonWriterOptions options)
+    {
+        return new Utf8JsonWriter(stream, options);
+    }
 
     private void Visit<TState>(TState? value, Utf8JsonWriter writer)
     {
@@ -202,7 +205,7 @@ public class Utf8JsonFormatter(
                         break;
                     case char c:
                     {
-                        writer.WriteStringValue(c.ToString());
+                        writer.WriteStringValue([c]);
                         break;
                     }
                     case TimeSpan c:
@@ -220,7 +223,7 @@ public class Utf8JsonFormatter(
                     {
                         Span<char> buffer = stackalloc char[bufferSize];
                         if (c.TryFormat(buffer, out int written, provider: _formatProvider,
-                                format: default))
+                                format: "yyyy-MM-dd"))
                         {
                             writer.WriteStringValue(buffer[..written]);
                         }
@@ -231,7 +234,7 @@ public class Utf8JsonFormatter(
                     {
                         Span<char> buffer = stackalloc char[bufferSize];
                         if (c.TryFormat(buffer, out int written, provider: _formatProvider,
-                                format: default))
+                                format: "O"))
                         {
                             writer.WriteStringValue(buffer[..written]);
                         }
