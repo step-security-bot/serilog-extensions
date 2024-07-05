@@ -306,13 +306,13 @@ public class SerilogJsonFormatterTest(ITestOutputHelper output)
 
         var d = FormatEvent(e);
 
-        dynamic[] rs = ((IEnumerable)d["renderings"]!).Cast<dynamic>().ToArray();
+        var rs = d["renderings"]?.AsObject() ?? new JsonObject();
         Assert.Single(rs);
-        dynamic ap = d["renderings"]?["aProperty"]!;
-        dynamic[] fs = ((IEnumerable)ap).Cast<dynamic>().ToArray();
+        var ap = d["renderings"]?["aProperty"];
+        var fs = ap?.AsObject() ?? new JsonObject();
         Assert.Single(fs);
-        Assert.Equal("000", (string)fs.Single().format);
-        Assert.Equal("012", (string)fs.Single().rendering);
+        Assert.Equal("000", (string?)fs["format"]);
+        Assert.Equal("012", (string?)fs["rendering"]);
     }
 
     [Fact]
