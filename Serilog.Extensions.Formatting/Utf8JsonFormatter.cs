@@ -25,6 +25,8 @@ public class Utf8JsonFormatter(
     private readonly CultureInfo _formatProvider = formatProvider as CultureInfo ?? CultureInfo.InvariantCulture;
     private const string NoQuotingOfStrings = "l";
 
+
+    /// <inheritdoc />
     public void Format(LogEvent? logEvent, TextWriter? output)
     {
         ArgumentNullException.ThrowIfNull(logEvent);
@@ -39,7 +41,7 @@ public class Utf8JsonFormatter(
             str = new MemoryStream();
         }
 
-        using var writer = CreateWriter(str, new JsonWriterOptions { Indented = false, SkipValidation = false });
+        using var writer = CreateWriter(str, new JsonWriterOptions { Indented = false, SkipValidation = true });
         writer.WriteStartObject();
         writer.WriteString("timestamp"u8, logEvent.Timestamp.ToString("O", formatProvider));
         writer.WriteString("level"u8, Enum.GetName(logEvent.Level));
@@ -148,6 +150,7 @@ public class Utf8JsonFormatter(
 
             Visit(element.Value, writer);
         }
+
         writer.WriteEndObject();
     }
 
