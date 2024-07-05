@@ -6,7 +6,7 @@ namespace Serilog.Extensions.Formatting.Test;
 // todo
 public class JsonValueFormatterTests
 {
-    class JsonLiteralValueFormatter : JsonValueFormatter
+    private class JsonLiteralValueFormatter : JsonValueFormatter
     {
         public string Format(object? literal)
         {
@@ -45,11 +45,11 @@ public class JsonValueFormatterTests
     [Fact]
     public void DateTimesFormatAsIso8601()
     {
-        JsonLiteralTypesAreFormatted(new DateTime(2016, 01, 01, 13, 13, 13, DateTimeKind.Utc), "\"2016-01-01T13:13:13.0000000Z\"");
+        JsonLiteralTypesAreFormatted(new DateTime(2016, 01, 01, 13, 13, 13, DateTimeKind.Utc),
+            "\"2016-01-01T13:13:13.0000000Z\"");
     }
 
 #if FEATURE_DATE_AND_TIME_ONLY
-
     [Fact]
     public void DateOnly()
     {
@@ -125,7 +125,8 @@ public class JsonValueFormatterTests
     [Fact]
     public void GuidFormatsAsString()
     {
-        JsonLiteralTypesAreFormatted(Guid.Parse("88c117ae-616c-4bf7-ab58-9c729b15c562"), "\"88c117ae-616c-4bf7-ab58-9c729b15c562\"");
+        JsonLiteralTypesAreFormatted(Guid.Parse("88c117ae-616c-4bf7-ab58-9c729b15c562"),
+            "\"88c117ae-616c-4bf7-ab58-9c729b15c562\"");
         JsonLiteralTypesAreFormatted(Guid.Empty, "\"00000000-0000-0000-0000-000000000000\"");
     }
 
@@ -140,10 +141,12 @@ public class JsonValueFormatterTests
     [Fact]
     public void ObjectsAreFormattedAsExceptionStringsInJsonWhenToStringThrows()
     {
-        Assert.Throws<ArgumentNullException>(() => JsonLiteralTypesAreFormatted(new ToStringThrows(), "will Throws a error before comparing with this string"));
+        Assert.Throws<ArgumentNullException>(() =>
+            JsonLiteralTypesAreFormatted(new ToStringThrows(),
+                "will Throws a error before comparing with this string"));
     }
 
-    static string Format(LogEventPropertyValue value)
+    private static string Format(LogEventPropertyValue value)
     {
         var formatter = new JsonValueFormatter();
         var output = new StringWriter();
@@ -154,14 +157,14 @@ public class JsonValueFormatterTests
     [Fact]
     public void ScalarPropertiesFormatAsLiteralValues()
     {
-        var f = Format(new ScalarValue(123));
+        string f = Format(new ScalarValue(123));
         Assert.Equal("123", f);
     }
 
     [Fact]
     public void SequencePropertiesFormatAsArrayValue()
     {
-        var f = Format(new SequenceValue([new ScalarValue(123), new ScalarValue(456)]));
+        string f = Format(new SequenceValue([new ScalarValue(123), new ScalarValue(456)]));
         Assert.Equal("[123,456]", f);
     }
 
@@ -169,18 +172,19 @@ public class JsonValueFormatterTests
     public void StructuresFormatAsAnObject()
     {
         var structure = new StructureValue(new[] { new LogEventProperty("A", new ScalarValue(123)) }, "T");
-        var f = Format(structure);
+        string f = Format(structure);
         Assert.Equal("{\"A\":123,\"_typeTag\":\"T\"}", f);
     }
 
     [Fact]
     public void DictionaryWithScalarKeyFormatsAsAnObject()
     {
-        var dict = new DictionaryValue(new Dictionary<ScalarValue, LogEventPropertyValue> {
-            { new ScalarValue(12), new ScalarValue(345) }
+        var dict = new DictionaryValue(new Dictionary<ScalarValue, LogEventPropertyValue>
+        {
+            { new ScalarValue(12), new ScalarValue(345) },
         });
 
-        var f = Format(dict);
+        string f = Format(dict);
         Assert.Equal("{\"12\":345}", f);
     }
 
@@ -189,7 +193,7 @@ public class JsonValueFormatterTests
     {
         var s = new SequenceValue([new SequenceValue([new ScalarValue("Hello")])]);
 
-        var f = Format(s);
+        string f = Format(s);
         Assert.Equal("[[\"Hello\"]]", f);
     }
 
@@ -200,7 +204,7 @@ public class JsonValueFormatterTests
         var formatter = new JsonValueFormatter("$type");
         var output = new StringWriter();
         formatter.Format(structure, output);
-        var f = output.ToString();
+        string f = output.ToString();
         Assert.Equal("{\"$type\":\"T\"}", f);
     }
 
@@ -211,26 +215,38 @@ public class JsonValueFormatterTests
         var formatter = new JsonValueFormatter(null);
         var output = new StringWriter();
         formatter.Format(structure, output);
-        var f = output.ToString();
+        string f = output.ToString();
         Assert.Equal("{}", f);
     }
 
-    class AChair
+    private class AChair
     {
         public string Back => "";
         public int[]? Legs => null;
-        public override string ToString() => "a chair";
+
+        public override string ToString()
+        {
+            return "a chair";
+        }
     }
 
-    class ToStringReturnsNull
+    private class ToStringReturnsNull
     {
         public string AProp => "";
-        public override string? ToString() => null;
+
+        public override string? ToString()
+        {
+            return null;
+        }
     }
 
-    class ToStringThrows
+    private class ToStringThrows
     {
         public string AProp => "";
-        public override string ToString() => throw new ArgumentNullException("", "A possible a Bug in a class");
+
+        public override string ToString()
+        {
+            throw new ArgumentNullException("", "A possible a Bug in a class");
+        }
     }
 }
