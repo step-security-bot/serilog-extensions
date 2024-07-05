@@ -1,8 +1,16 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Serilog.Extensions.Formatting", "Serilog.Extensions.Formatting\Serilog.Extensions.Formatting.csproj", "{DE68E991-F6A3-46A9-87D3-34F6640117FC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DE68E991-F6A3-46A9-87D3-34F6640117FC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE68E991-F6A3-46A9-87D3-34F6640117FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE68E991-F6A3-46A9-87D3-34F6640117FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE68E991-F6A3-46A9-87D3-34F6640117FC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
