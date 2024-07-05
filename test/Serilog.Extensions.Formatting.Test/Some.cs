@@ -6,19 +6,37 @@ namespace Serilog.Extensions.Formatting.Test;
 
 internal static class Some
 {
-    static int Counter;
+    private static int Counter;
 
-    public static int Int() => Interlocked.Increment(ref Counter);
+    public static int Int()
+    {
+        return Interlocked.Increment(ref Counter);
+    }
 
-    public static decimal Decimal() => Int() + 0.123m;
+    public static decimal Decimal()
+    {
+        return Int() + 0.123m;
+    }
 
-    public static string String(string? tag = null) => (tag ?? "") + "__" + Int();
+    public static string String(string? tag = null)
+    {
+        return (tag ?? "") + "__" + Int();
+    }
 
-    public static TimeSpan TimeSpan() => System.TimeSpan.FromMinutes(Int());
+    public static TimeSpan TimeSpan()
+    {
+        return System.TimeSpan.FromMinutes(Int());
+    }
 
-    public static DateTime Instant() => new DateTime(2012, 10, 28) + TimeSpan();
+    public static DateTime Instant()
+    {
+        return new DateTime(2012, 10, 28) + TimeSpan();
+    }
 
-    public static DateTimeOffset OffsetInstant() => new(Instant());
+    public static DateTimeOffset OffsetInstant()
+    {
+        return new DateTimeOffset(Instant());
+    }
 
     public static LogEvent LogEvent(
         DateTimeOffset? timestamp = null,
@@ -30,8 +48,9 @@ internal static class Some
         ActivitySpanId spanId = default)
     {
         var logger = new LoggerConfiguration().CreateLogger();
-        Assert.True(logger.BindMessageTemplate(messageTemplate ?? "DEFAULT TEMPLATE", propertyValues, out var parsedTemplate, out var boundProperties));
-        return new(
+        Assert.True(logger.BindMessageTemplate(messageTemplate ?? "DEFAULT TEMPLATE", propertyValues,
+            out var parsedTemplate, out var boundProperties));
+        return new LogEvent(
             timestamp ?? OffsetInstant(),
             level,
             exception,
@@ -43,7 +62,7 @@ internal static class Some
 
     public static LogEvent InformationEvent(DateTimeOffset? timestamp = null)
     {
-        return LogEvent(timestamp, LogEventLevel.Information);
+        return LogEvent(timestamp);
     }
 
     public static LogEvent DebugEvent(DateTimeOffset? timestamp = null)
@@ -58,7 +77,7 @@ internal static class Some
 
     public static LogEventProperty LogEventProperty()
     {
-        return new(String(), new ScalarValue(Int()));
+        return new LogEventProperty(String(), new ScalarValue(Int()));
     }
 
     public static string NonexistentTempFilePath()
@@ -66,11 +85,14 @@ internal static class Some
         return Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".txt");
     }
 
-    public static string TempFilePath() => Path.GetTempFileName();
+    public static string TempFilePath()
+    {
+        return Path.GetTempFileName();
+    }
 
     public static string TempFolderPath()
     {
-        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        string dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(dir);
         return dir;
     }

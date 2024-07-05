@@ -5,7 +5,7 @@ namespace Serilog.Extensions.Formatting.Test;
 
 public class DelegatingSink : ILogEventSink
 {
-    readonly Action<LogEvent> _write;
+    private readonly Action<LogEvent> _write;
 
     public DelegatingSink(Action<LogEvent> write)
     {
@@ -18,7 +18,8 @@ public class DelegatingSink : ILogEventSink
         _write(logEvent);
     }
 
-    public static LogEvent GetLogEvent(Action<ILogger> writeAction, Func<LoggerConfiguration, LoggerConfiguration>? configure = null)
+    public static LogEvent GetLogEvent(Action<ILogger> writeAction,
+        Func<LoggerConfiguration, LoggerConfiguration>? configure = null)
     {
         LogEvent? result = null;
         var configuration = new LoggerConfiguration()
@@ -26,7 +27,9 @@ public class DelegatingSink : ILogEventSink
             .WriteTo.Sink(new DelegatingSink(le => result = le));
 
         if (configure != null)
+        {
             configuration = configure(configuration);
+        }
 
         var l = configuration.CreateLogger();
 

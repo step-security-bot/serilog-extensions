@@ -107,7 +107,7 @@ public class Utf8JsonFormatter(
     }
 
     /// <summary>
-    /// Creates a new <see cref="Utf8JsonWriter"/> instance.
+    ///     Creates a new <see cref="Utf8JsonWriter" /> instance.
     /// </summary>
     /// <param name="stream">The stream to write to.</param>
     /// <param name="options">Options to use when writing.</param>
