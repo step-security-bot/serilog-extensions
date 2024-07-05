@@ -8,9 +8,9 @@ using Xunit.Abstractions;
 
 namespace Serilog.Extensions.Formatting.Test;
 
-public class Utf8JsonFormatterTest
+public class Utf8JsonFormatterTests
 {
-    public Utf8JsonFormatterTest(ITestOutputHelper output)
+    public Utf8JsonFormatterTests(ITestOutputHelper output)
     {
         _output = output;
     }

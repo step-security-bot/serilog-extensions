@@ -9,7 +9,7 @@ using static Serilog.Events.LogEventLevel;
 
 namespace Serilog.Extensions.Formatting.Test;
 
-public class SerilogJsonFormatterTest(ITestOutputHelper output)
+public class SerilogJsonFormatterTests(ITestOutputHelper output)
 {
     private string FormatToJson(LogEvent @event)
     {
