@@ -39,9 +39,9 @@ public class Utf8JsonFormatter(
             str = new MemoryStream();
         }
 
-        using var writer = new Utf8JsonWriter(str, new JsonWriterOptions { Indented = false, SkipValidation = false });
+        using var writer = CreateWriter(str, new JsonWriterOptions { Indented = false, SkipValidation = false });
         writer.WriteStartObject();
-        writer.WriteString("timestamp"u8, logEvent.Timestamp.ToString("O"));
+        writer.WriteString("timestamp"u8, logEvent.Timestamp.ToString("O", formatProvider));
         writer.WriteString("level"u8, Enum.GetName(logEvent.Level));
         writer.WriteString("messageTemplate"u8, logEvent.MessageTemplate.Text);
         if (renderMessage)
@@ -103,6 +103,8 @@ public class Utf8JsonFormatter(
 
         output.Write(_closingDelimiter);
     }
+
+    public virtual Utf8JsonWriter CreateWriter(Stream stream, JsonWriterOptions options) => new (stream, options);
 
     private void Visit<TState>(TState? value, Utf8JsonWriter writer)
     {
