@@ -10,21 +10,15 @@ using static Serilog.Events.LogEventLevel;
 
 namespace Serilog.Extensions.Formatting.Test;
 
-public class SerilogJsonFormatterTest
+public class SerilogJsonFormatterTest(ITestOutputHelper output)
 {
-    public SerilogJsonFormatterTest(ITestOutputHelper output)
-    {
-        _output = output;
-    }
-
-    private readonly ITestOutputHelper _output;
     private string FormatToJson(LogEvent @event)
     {
         var formatter = new Utf8JsonFormatter();
-        var output = new StringWriter();
-        formatter.Format(@event, output);
-        string result = output.ToString();
-        Helpers.AssertValidJson(result, _output);
+        var output1 = new StringWriter();
+        formatter.Format(@event, output1);
+        string result = output1.ToString();
+        Helpers.AssertValidJson(result, output);
         return result;
     }
 
@@ -86,6 +80,18 @@ public class SerilogJsonFormatterTest
 
         Assert.Equal(Value.ToString(), (string)formatted.properties[name]);
     }
+    [Fact]
+    public void AEnumPropertySerializesAsStringValue()
+    {
+        string name = Some.String();
+        const TestEnum Value = TestEnum.Value1;
+        var @event = Some.InformationEvent();
+        @event.AddOrUpdateProperty(new LogEventProperty(name, new ScalarValue(Value)));
+
+        dynamic formatted = FormatJson(@event);
+
+        Assert.Equal(Value.ToString(), (string)formatted.properties[name]);
+    }
 
     [Fact]
     public void ADecimalSerializesAsNumericValue()
@@ -98,6 +104,42 @@ public class SerilogJsonFormatterTest
         dynamic formatted = FormatJson(@event);
 
         Assert.Equal(Value, (decimal)formatted.properties[name]);
+    }
+    [Fact]
+    public void ADoubleSerializesAsNumericValue()
+    {
+        string name = Some.String();
+        const double Value = 123.45;
+        var @event = Some.InformationEvent();
+        @event.AddOrUpdateProperty(new LogEventProperty(name, new ScalarValue(Value)));
+
+        dynamic formatted = FormatJson(@event);
+
+        Assert.Equal(Value, (double)formatted.properties[name]);
+    }
+    [Fact]
+    public void ASbyteSerializesAsNumericValue()
+    {
+        string name = Some.String();
+        const sbyte Value = 123;
+        var @event = Some.InformationEvent();
+        @event.AddOrUpdateProperty(new LogEventProperty(name, new ScalarValue(Value)));
+
+        dynamic formatted = FormatJson(@event);
+
+        Assert.Equal(Value, (sbyte)formatted.properties[name]);
+    }
+    [Fact]
+    public void AFloatSerializesAsNumericValue()
+    {
+        string name = Some.String();
+        const float Value = 123.45f;
+        var @event = Some.InformationEvent();
+        @event.AddOrUpdateProperty(new LogEventProperty(name, new ScalarValue(Value)));
+
+        dynamic formatted = FormatJson(@event);
+
+        Assert.Equal(Value, (float)formatted.properties[name]);
     }
 
     [Fact]
@@ -177,8 +219,8 @@ public class SerilogJsonFormatterTest
         var e = DelegatingSink.GetLogEvent(l => l.Information("Value is {ADictionary}", dict),
             cfg => cfg.Destructure.AsDictionary<MyDictionary>());
         dynamic f = FormatJson(e);
-        Assert.Equal("world", (string)f.properties.ADictionary["hello"]);
-        Assert.Equal(1.2, (double)f.properties.ADictionary.nums[0]);
+        Assert.Equal("world", (string)f.properties.aDictionary["hello"]);
+        Assert.Equal(1.2, (double)f.properties.aDictionary.nums[0]);
     }
 
     [Fact]
@@ -208,8 +250,8 @@ public class SerilogJsonFormatterTest
         var e = DelegatingSink.GetLogEvent(l => l.Information("Value is {ADictionary}", dict));
         dynamic f = FormatJson(e);
 
-        Assert.Equal("world", (string)f.properties.ADictionary["hello"]);
-        Assert.Equal(1.2, (double)f.properties.ADictionary.nums[0]);
+        Assert.Equal("world", (string)f.properties.aDictionary["hello"]);
+        Assert.Equal(1.2, (double)f.properties.aDictionary.nums[0]);
     }
 
     [Fact]
@@ -304,8 +346,8 @@ public class SerilogJsonFormatterTest
         var e = DelegatingSink.GetLogEvent(l => l.Information("Value is {ADictionary}", dict));
         dynamic f = FormatJson(e);
 
-        Assert.Equal("world", (string)f.properties.ADictionary["hello"]);
-        Assert.Equal(1.2, (double)f.properties.ADictionary.nums[0]);
+        Assert.Equal("world", (string)f.properties.aDictionary["hello"]);
+        Assert.Equal(1.2, (double)f.properties.aDictionary.nums[0]);
     }
 
     [Fact] // See https://github.com/serilog/serilog/issues/1924
@@ -370,4 +412,11 @@ public class SerilogJsonFormatterTest
             "spanId":"{spanId}"
             """, formatted);
     }
+}
+
+internal enum TestEnum
+{
+    Value1,
+    Value2,
+    asdf,
 }

@@ -148,6 +148,7 @@ public class Utf8JsonFormatter(
 
             Visit(element.Value, writer);
         }
+        writer.WriteEndObject();
     }
 
     private void VisitStructureValue(StructureValue? value, Utf8JsonWriter writer)
