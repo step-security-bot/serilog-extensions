@@ -9,12 +9,7 @@ namespace Serilog.Extensions.Formatting;
 
 /// <summary>
 ///     Formats log events in a simple JSON structure using <see cref="System.Text.Json.Utf8JsonWriter" />.
-///     Instances of this class are safe for concurrent access by multiple threads.
 /// </summary>
-/// <remarks>
-///     This formatter formats using camelCase keys. For properties,
-///     it simply converts the first character to lower, using the provided format provider
-/// </remarks>
 public class Utf8JsonFormatter : ITextFormatter
 {
     private readonly string _closingDelimiter;
@@ -30,12 +25,25 @@ public class Utf8JsonFormatter : ITextFormatter
 
     /// <summary>
     ///     Formats log events in a simple JSON structure using <see cref="System.Text.Json.Utf8JsonWriter" />.
-    ///     Instances of this class are safe for concurrent access by multiple threads.
     /// </summary>
-    /// <remarks>
-    ///     This formatter formats using camelCase keys. For properties,
-    ///     it simply converts the first character to lower, using the provided format provider
-    /// </remarks>
+    /// <param name="closingDelimiter">
+    ///     A string that will be written after each log event is formatted.
+    ///     If null, <see cref="Environment.NewLine" /> will be used.
+    /// </param>
+    /// <param name="renderMessage">
+    ///     If <see langword="true" />, the message will be rendered and written to the output as a
+    ///     property named RenderedMessage.
+    /// </param>
+    /// <param name="formatProvider">Supplies culture-specific formatting information, or null.</param>
+    /// <param name="spanBufferSize">
+    ///     Buffer size for the <see cref="ISpanFormattable" /> property values that are not already
+    ///     handled by Utf8JsonWriter.
+    /// </param>
+    /// <param name="skipValidation">
+    ///     Set to <see langword="false" /> to enable validation of the JSON output by the underlying
+    ///     <see cref="Utf8JsonWriter" />.
+    /// </param>
+    /// <param name="namingPolicy">Naming policy to use for the JSON output.</param>
     public Utf8JsonFormatter(string? closingDelimiter = null,
         bool renderMessage = false,
         IFormatProvider? formatProvider = null,
@@ -268,8 +276,8 @@ public class Utf8JsonFormatter : ITextFormatter
                     case bool b:
                         writer.WriteBooleanValue(b);
                         break;
-                    case char c1:
-                        writer.WriteStringValue([c1]);
+                    case char c:
+                        writer.WriteStringValue([c]);
                         break;
                     case DateTime dt:
                         writer.WriteStringValue(dt);
