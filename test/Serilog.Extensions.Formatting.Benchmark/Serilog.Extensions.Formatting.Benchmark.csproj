@@ -9,6 +9,12 @@
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.13.12"/>
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0"/>
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1"/>
+    <PackageReference Include="Serilog.Enrichers.Memory" Version="1.0.4"/>
+    <PackageReference Include="Serilog.Enrichers.Process" Version="3.0.0"/>
+    <PackageReference Include="Serilog.Enrichers.Sensitive" Version="1.7.3"/>
+    <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0"/>
+    <PackageReference Include="Serilog.Exceptions" Version="8.4.0"/>
   </ItemGroup>
 
   <ItemGroup>

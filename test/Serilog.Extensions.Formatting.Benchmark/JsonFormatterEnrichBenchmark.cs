@@ -1,6 +1,10 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
+using Serilog.Context;
 using Serilog.Core;
+using Serilog.Enrichers.Sensitive;
+using Serilog.Events;
+using Serilog.Exceptions;
 using Serilog.Formatting.Json;
 
 namespace Serilog.Extensions.Formatting.Benchmark;
@@ -9,8 +13,9 @@ namespace Serilog.Extensions.Formatting.Benchmark;
 [MemoryDiagnoser]
 [GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
 [CategoriesColumn]
-public class JsonFormatterBenchmark
+public class JsonFormatterEnrichBenchmark
 {
+    private IEnumerable<IDisposable> _contexts = null!;
     private Exception _exception = null!;
     private Logger _jsonLog = null!;
     private Logger _utf8JsonLog = null!;
@@ -24,16 +29,46 @@ public class JsonFormatterBenchmark
         { "F", new DateTime(2000, 1, 1) },
     };
 
+    private static LoggerConfiguration LoggerConfiguration()
+    {
+        return new LoggerConfiguration().MinimumLevel.Verbose()
+            .Enrich.WithEnvironmentName()
+            .Enrich.WithMemoryUsage()
+            .Enrich.WithProcessId()
+            .Enrich.WithThreadId()
+            .Enrich.WithExceptionDetails()
+            .Enrich.WithSensitiveDataMasking(new SensitiveDataEnricherOptions())
+            .Enrich.WithEnvironmentUserName()
+            .Enrich.WithProperty("HelloWorld", int.MaxValue);
+    }
+
     [GlobalSetup]
     public void Setup()
     {
         _exception = new Exception("An Error");
-        _jsonLog = new LoggerConfiguration().MinimumLevel.Verbose()
+        _jsonLog = LoggerConfiguration()
             .WriteTo.Sink(new NullSink(new JsonFormatter(), new StreamWriter(Stream.Null)))
             .CreateLogger();
-        _utf8JsonLog = new LoggerConfiguration().MinimumLevel.Verbose()
+        _utf8JsonLog = LoggerConfiguration()
             .WriteTo.Sink(new NullSink(new Utf8JsonFormatter(skipValidation: true), new StreamWriter(Stream.Null)))
             .CreateLogger();
+        _contexts =
+        [
+            LogContext.PushProperty("HelloWorld", new JsonFormatter(), true),
+            LogContext.PushProperty("CurrentDate", DateOnly.FromDateTime(DateTime.Now)),
+            LogContext.PushProperty("CurrentTime", TimeOnly.FromDateTime(DateTime.Now)),
+            LogContext.PushProperty("CurrentDateTime", DateTime.Now),
+            LogContext.PushProperty("EnumValue", LogEventLevel.Fatal),
+        ];
+    }
+
+    [GlobalCleanup]
+    public void Dispose()
+    {
+        foreach (var ctx in _contexts)
+        {
+            ctx.Dispose();
+        }
     }
 
     [BenchmarkCategory("EmitLogEvent")]
