@@ -1,7 +1,5 @@
 using System.Diagnostics;
 using System.Text;
-using System.Text.Json;
-using Moq;
 using Serilog.Events;
 using Serilog.Parsing;
 using Xunit.Abstractions;
@@ -22,18 +20,10 @@ public class Utf8JsonFormatterTests
     public void DoesNotThrowError()
     {
         var formatter =
-            new Mock<Utf8JsonFormatter>(() => new Utf8JsonFormatter(null, true, null, 64))
-            {
-                CallBase = true,
-            };
+            new Utf8JsonFormatter(null, true, null, 64, true);
         using var stream = new MemoryStream();
         using var writer = new StreamWriter(stream);
-        formatter.Setup(f => f.CreateWriter(It.IsAny<Stream>(), It.IsAny<JsonWriterOptions>())).Returns(
-            new Utf8JsonWriter(stream, new JsonWriterOptions
-            {
-                SkipValidation = false,
-            }));
-        formatter.Object.Format(new LogEvent(_dateTimeOffset, LogEventLevel.Debug, null,
+        formatter.Format(new LogEvent(_dateTimeOffset, LogEventLevel.Debug, null,
             new MessageTemplate("hello world {Number}", [new PropertyToken("Number", "{Number}")]),
             [
                 new LogEventProperty("hello", new ScalarValue("world")),
@@ -49,19 +39,10 @@ public class Utf8JsonFormatterTests
     [Fact]
     public void FormatTest()
     {
-        var formatter =
-            new Mock<Utf8JsonFormatter>(() => new Utf8JsonFormatter(null, false, null, 64))
-            {
-                CallBase = true,
-            };
+        var formatter = new Utf8JsonFormatter();
         using var stream = new MemoryStream();
         using var writer = new StreamWriter(stream);
-        formatter.Setup(f => f.CreateWriter(It.IsAny<Stream>(), It.IsAny<JsonWriterOptions>())).Returns(
-            new Utf8JsonWriter(stream, new JsonWriterOptions
-            {
-                SkipValidation = true,
-            }));
-        formatter.Object.Format(new LogEvent(_dateTimeOffset, LogEventLevel.Debug, null,
+        formatter.Format(new LogEvent(_dateTimeOffset, LogEventLevel.Debug, null,
             new MessageTemplate("hello world", []), [new LogEventProperty("hello", new ScalarValue("world"))],
             ActivityTraceId.CreateFromUtf8String("3653d3ec94d045b9850794a08a4b286f"u8),
             ActivitySpanId.CreateFromUtf8String("fcfb4c32a12a3532"u8)), writer);
@@ -74,18 +55,10 @@ public class Utf8JsonFormatterTests
     public void WithException()
     {
         var formatter =
-            new Mock<Utf8JsonFormatter>(() => new Utf8JsonFormatter(null, false, null, 64))
-            {
-                CallBase = true,
-            };
+            new Utf8JsonFormatter(null, true, null, 64, true);
         using var stream = new MemoryStream();
         using var writer = new StreamWriter(stream);
-        formatter.Setup(f => f.CreateWriter(It.IsAny<Stream>(), It.IsAny<JsonWriterOptions>())).Returns(
-            new Utf8JsonWriter(stream, new JsonWriterOptions
-            {
-                SkipValidation = false,
-            }));
-        formatter.Object.Format(new LogEvent(_dateTimeOffset, LogEventLevel.Debug, new AggregateException([
+        formatter.Format(new LogEvent(_dateTimeOffset, LogEventLevel.Debug, new AggregateException([
                 new Exception("test"), new InvalidOperationException("test2", new ArgumentException("test3")
                 {
                     Data = { ["test"] = "test2" },

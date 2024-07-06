@@ -35,6 +35,6 @@ public class DelegatingSink : ILogEventSink
 
         writeAction(l);
         Assert.NotNull(result);
-        return result!;
+        return result;
     }
 }

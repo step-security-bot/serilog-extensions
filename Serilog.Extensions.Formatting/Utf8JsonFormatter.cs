@@ -15,15 +15,37 @@ namespace Serilog.Extensions.Formatting;
 ///     This formatter formats using camelCase keys. For properties,
 ///     it simply converts the first character to lower, using the provided format provider
 /// </remarks>
-public class Utf8JsonFormatter(
-    string? closingDelimiter = null,
-    bool renderMessage = false,
-    IFormatProvider? formatProvider = null,
-    int bufferSize = 64) : ITextFormatter
+public class Utf8JsonFormatter : ITextFormatter
 {
-    private readonly string _closingDelimiter = closingDelimiter ?? Environment.NewLine;
-    private readonly CultureInfo _formatProvider = formatProvider as CultureInfo ?? CultureInfo.InvariantCulture;
+    private readonly int _bufferSize;
+    private readonly string _closingDelimiter;
+    private readonly CultureInfo _formatProvider;
+    private readonly IFormatProvider? _formatProvider1;
+    private readonly bool _renderMessage;
+    private readonly Utf8JsonWriter _writer;
     private const string NoQuotingOfStrings = "l";
+
+    /// <summary>
+    ///     Formats log events in a simple JSON structure using <see cref="System.Text.Json.Utf8JsonWriter" />.
+    ///     Instances of this class are safe for concurrent access by multiple threads.
+    /// </summary>
+    /// <remarks>
+    ///     This formatter formats using camelCase keys. For properties,
+    ///     it simply converts the first character to lower, using the provided format provider
+    /// </remarks>
+    public Utf8JsonFormatter(string? closingDelimiter = null,
+        bool renderMessage = false,
+        IFormatProvider? formatProvider = null,
+        int bufferSize = 64,
+        bool skipValidation = false)
+    {
+        _renderMessage = renderMessage;
+        _formatProvider1 = formatProvider;
+        _bufferSize = bufferSize;
+        _closingDelimiter = closingDelimiter ?? Environment.NewLine;
+        _formatProvider = formatProvider as CultureInfo ?? CultureInfo.InvariantCulture;
+        _writer = new Utf8JsonWriter(Stream.Null, new JsonWriterOptions { SkipValidation = skipValidation });
+    }
 
 
     /// <inheritdoc />
@@ -41,12 +63,12 @@ public class Utf8JsonFormatter(
             str = new MemoryStream();
         }
 
-        using var writer = CreateWriter(str, new JsonWriterOptions { Indented = false, SkipValidation = true });
+        var writer = GetWriter(str);
         writer.WriteStartObject();
-        writer.WriteString("timestamp"u8, logEvent.Timestamp.ToString("O", formatProvider));
+        writer.WriteString("timestamp"u8, logEvent.Timestamp.ToString("O", _formatProvider1));
         writer.WriteString("level"u8, Enum.GetName(logEvent.Level));
         writer.WriteString("messageTemplate"u8, logEvent.MessageTemplate.Text);
-        if (renderMessage)
+        if (_renderMessage)
         {
             writer.WriteString("renderedMessage"u8, logEvent.MessageTemplate.Render(logEvent.Properties));
         }
@@ -107,14 +129,14 @@ public class Utf8JsonFormatter(
     }
 
     /// <summary>
-    ///     Creates a new <see cref="Utf8JsonWriter" /> instance.
+    ///     Sets the stream of the <see cref="Utf8JsonWriter" /> instance.
     /// </summary>
     /// <param name="stream">The stream to write to.</param>
-    /// <param name="options">Options to use when writing.</param>
-    /// <returns></returns>
-    public virtual Utf8JsonWriter CreateWriter(Stream stream, JsonWriterOptions options = default)
+    /// <returns>The <see cref="Utf8JsonWriter" /> instance.</returns>
+    public virtual Utf8JsonWriter GetWriter(Stream stream)
     {
-        return new Utf8JsonWriter(stream, options);
+        _writer.Reset(stream);
+        return _writer;
     }
 
     private void Visit<TState>(TState? value, Utf8JsonWriter writer)
@@ -220,7 +242,7 @@ public class Utf8JsonFormatter(
                     }
                     case TimeSpan c:
                     {
-                        Span<char> buffer = stackalloc char[bufferSize];
+                        Span<char> buffer = stackalloc char[_bufferSize];
                         if (c.TryFormat(buffer, out int written, formatProvider: _formatProvider,
                                 format: default))
                         {
@@ -231,7 +253,7 @@ public class Utf8JsonFormatter(
                     }
                     case DateOnly c:
                     {
-                        Span<char> buffer = stackalloc char[bufferSize];
+                        Span<char> buffer = stackalloc char[_bufferSize];
                         if (c.TryFormat(buffer, out int written, provider: _formatProvider,
                                 format: "yyyy-MM-dd"))
                         {
@@ -242,7 +264,7 @@ public class Utf8JsonFormatter(
                     }
                     case TimeOnly c:
                     {
-                        Span<char> buffer = stackalloc char[bufferSize];
+                        Span<char> buffer = stackalloc char[_bufferSize];
                         if (c.TryFormat(buffer, out int written, provider: _formatProvider,
                                 format: "O"))
                         {
@@ -258,7 +280,7 @@ public class Utf8JsonFormatter(
                     }
                     case ISpanFormattable span:
                     {
-                        Span<char> buffer = stackalloc char[bufferSize];
+                        Span<char> buffer = stackalloc char[_bufferSize];
                         if (span.TryFormat(buffer, out int written, provider: _formatProvider,
                                 format: default))
                         {
