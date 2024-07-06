@@ -79,12 +79,12 @@ public class Utf8JsonFormatter : ITextFormatter
                 logEvent.MessageTemplate.Render(logEvent.Properties, _formatProvider));
         }
 
-        if (logEvent.TraceId != null)
+        if (logEvent.TraceId.HasValue)
         {
             writer.WriteString(_names.TraceId, logEvent.TraceId.Value.ToString());
         }
 
-        if (logEvent.SpanId != null)
+        if (logEvent.SpanId.HasValue)
         {
             writer.WriteString(_names.SpanId, logEvent.SpanId.Value.ToString());
         }

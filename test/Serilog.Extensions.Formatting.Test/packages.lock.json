@@ -134,7 +134,7 @@
           "xunit.extensibility.core": "[2.8.1]"
         }
       },
-      "serilog.extensions.formatting": {
+      "Alexaka1.Serilog.Extensions.Formatting": {
         "type": "Project",
         "dependencies": {
           "Serilog": "[4.0.0, )"

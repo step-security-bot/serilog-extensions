@@ -1,8 +1,32 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <PackageId>Alexaka1.Serilog.Extensions.Formatting</PackageId>
+    <Description>Serilog extensions for formatting</Description>
+    <VersionPrefix>0.0.1</VersionPrefix>
+    <Authors>Alex Martossy</Authors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageTags>serilog;json;utf8jsonwriter;system.text.json</PackageTags>
+    <!--    <PackageIcon>icon.png</PackageIcon>-->
+    <PackageProjectUrl>https://github.com/alexaka1/serilog-extensions</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <IsTrimmable>true</IsTrimmable>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+  <PropertyGroup>
     <IsAotCompatible>true</IsAotCompatible>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
+  <ItemGroup>
+    <!--    <None Include="../assets/icon.png" Pack="true" Visible="false" PackagePath="/" />-->
+    <None Include="../README.md" Pack="true" Visible="false" PackagePath="/"/>
+    <None Include="../LICENSE" Pack="true" Visible="false" PackagePath="/"/>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Serilog" Version="4.0.0"/>
   </ItemGroup>
