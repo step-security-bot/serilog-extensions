@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Configs;
 using Serilog.Core;
 using Serilog.Enrichers.Sensitive;
 using Serilog.Exceptions;
@@ -9,6 +10,7 @@ namespace Serilog.Extensions.Formatting.Benchmark;
 
 [SimpleJob]
 [MemoryDiagnoser]
+[GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByParams)]
 public class JsonFormatterNamingBenchmark
 {
     private Exception _exception = null!;
@@ -67,20 +69,26 @@ public class JsonFormatterNamingBenchmark
     [Benchmark]
     public void EmitLogEvent()
     {
-        _jsonLog.Information(_exception, "Hello, {Name}!", "World");
+        _jsonLog.Error(_exception, "Hello, {Name}!", "World");
+        _jsonLog.Information("Hello, {Name}!", "Alex");
+        _jsonLog.Debug("This is a debug message");
     }
 
     [Benchmark]
     public void IntProperties()
     {
-        _jsonLog.Information(_exception, "Hello, {A} {B} {C}!", 1, 2, 3);
+        _jsonLog.Error(_exception, "Hello, {A} {B} {C}!", 1, 2, 3);
+        _jsonLog.Information("The current time is, {Time}!", int.MaxValue);
+        _jsonLog.Debug("Hello there!");
     }
 
     [Benchmark]
     public void ComplexPropertiesUtf8()
     {
-        _jsonLog.Information(_exception, "Hello, {A} {@B} {C}!", s_propertyValue0, s_propertyValue1,
+        _jsonLog.Error(_exception, "Hello, {A} {@B} {C}!", s_propertyValue0, s_propertyValue1,
             s_propertyValue2);
+        _jsonLog.Information("The current time is, {Time}!", int.MaxValue);
+        _jsonLog.Debug("Hello there!");
     }
 
     public enum Namings
