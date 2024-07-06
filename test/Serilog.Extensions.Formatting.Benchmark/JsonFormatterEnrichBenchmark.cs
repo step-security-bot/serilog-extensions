@@ -12,7 +12,7 @@ namespace Serilog.Extensions.Formatting.Benchmark;
 
 [SimpleJob]
 [MemoryDiagnoser]
-[GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByParams)]
+[GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByMethod)]
 public class JsonFormatterEnrichBenchmark
 {
     private IEnumerable<IDisposable> _contexts = null!;

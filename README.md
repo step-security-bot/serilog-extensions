@@ -44,18 +44,18 @@ The `Utf8JsonFormatter` constructor accepts the following options:
 The recommended `ExpressionTemplate` is not as performant as a `Utf8JsonWriter`.
 `Serilog.Extensions.Formatting.Benchmark.JsonFormatterEnrichBenchmark`
 
-| Method            | Formatter      |         Mean |        Error |       StdDev |       Median |       Gen0 |    Allocated |
-|-------------------|----------------|-------------:|-------------:|-------------:|-------------:|-----------:|-------------:|
-| **EmitLogEvent**  | **Json**       | **12.05 μs** | **0.238 μs** | **0.543 μs** | **11.80 μs** | **2.8687** |  **8.81 KB** |
-| ComplexProperties | Json           |     17.41 μs |     0.342 μs |     0.512 μs |     17.27 μs |     3.5400 |     10.91 KB |
-| IntProperties     | Json           |     11.94 μs |     0.237 μs |     0.433 μs |     11.86 μs |     2.7466 |      8.58 KB |
-|                   |                |              |              |              |              |            |              |
-| **EmitLogEvent**  | **Utf8Json**   | **12.37 μs** | **0.246 μs** | **0.283 μs** | **12.27 μs** | **2.5024** |  **7.76 KB** |
-| ComplexProperties | Utf8Json       |     18.04 μs |     0.237 μs |     0.185 μs |     18.04 μs |     3.1738 |      9.92 KB |
-| IntProperties     | Utf8Json       |     12.76 μs |     0.253 μs |     0.470 μs |     12.77 μs |     2.4414 |      7.53 KB |
-|                   |                |              |              |              |              |            |              |
-| **EmitLogEvent**  | **Expression** | **23.44 μs** | **0.467 μs** | **0.590 μs** | **23.26 μs** | **4.3945** | **13.69 KB** |
-| ComplexProperties | Expression     |     35.41 μs |     0.694 μs |     1.215 μs |     35.64 μs |     5.8594 |     18.05 KB |
-| IntProperties     | Expression     |     23.56 μs |     0.453 μs |     0.705 μs |     23.46 μs |     4.3945 |     13.82 KB |
+| Method                | Formatter      |         Mean |        Error |       StdDev |       Median |       Gen0 |    Allocated |
+|-----------------------|----------------|-------------:|-------------:|-------------:|-------------:|-----------:|-------------:|
+| **EmitLogEvent**      | **Json**       | **11.81 μs** | **0.230 μs** | **0.236 μs** | **11.89 μs** | **2.8687** |  **8.81 KB** |
+| **EmitLogEvent**      | **Utf8Json**   | **12.82 μs** | **0.256 μs** | **0.647 μs** | **12.49 μs** | **2.5024** |  **7.76 KB** |
+| **EmitLogEvent**      | **Expression** | **23.40 μs** | **0.455 μs** | **0.773 μs** | **23.11 μs** | **4.3945** | **13.69 KB** |
+|                       |                |              |              |              |              |            |              |
+| **ComplexProperties** | **Json**       | **18.63 μs** | **0.373 μs** | **0.591 μs** | **18.73 μs** | **3.5400** | **10.91 KB** |
+| **ComplexProperties** | **Utf8Json**   | **18.48 μs** | **0.362 μs** | **0.519 μs** | **18.37 μs** | **3.1738** |  **9.92 KB** |
+| **ComplexProperties** | **Expression** | **33.72 μs** | **0.613 μs** | **0.776 μs** | **33.68 μs** | **5.8594** | **18.05 KB** |
+|                       |                |              |              |              |              |            |              |
+| **IntProperties**     | **Json**       | **11.45 μs** | **0.209 μs** | **0.186 μs** | **11.44 μs** | **2.7466** |  **8.58 KB** |
+| **IntProperties**     | **Utf8Json**   | **13.12 μs** | **0.254 μs** | **0.356 μs** | **12.97 μs** | **2.4414** |  **7.53 KB** |
+| **IntProperties**     | **Expression** | **23.84 μs** | **0.464 μs** | **0.534 μs** | **23.69 μs** | **4.3945** | **13.82 KB** |
 
 Also, I specifically had a use-case in the project which required logs to be in `camelCase`, and none of the built-in formatters supported that, not even `ExpressionTemplate`, since I couldn't find a way to specify a custom `JsonNamingPolicy` for properties.

@@ -10,7 +10,7 @@ namespace Serilog.Extensions.Formatting.Benchmark;
 
 [SimpleJob]
 [MemoryDiagnoser]
-[GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByParams)]
+[GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByMethod)]
 public class JsonFormatterNamingBenchmark
 {
     private Exception _exception = null!;
