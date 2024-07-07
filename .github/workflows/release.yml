@@ -114,9 +114,9 @@ jobs:
           VERSION=$(jq -r '.version' "${{ env.PackageJson }}")
           AVAILABLE_VERSIONS=$(curl -s "https://api.nuget.org/v3-flatcontainer/${{ env.PackageName }}/index.json" | jq -r '.versions[]')
           if echo "$AVAILABLE_VERSIONS" | grep -q "^$VERSION$"; then
-            echo "canPack=true" >> "$GITHUB_OUTPUT"
-          else
             echo "canPack=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "canPack=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Dotnet restore
         if: steps.pack.outputs.canPack == 'true'
