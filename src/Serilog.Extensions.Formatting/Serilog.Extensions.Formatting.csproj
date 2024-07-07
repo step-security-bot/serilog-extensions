@@ -2,7 +2,7 @@
   <PropertyGroup>
     <PackageId>Alexaka1.Serilog.Extensions.Formatting</PackageId>
     <Description>Serilog extensions for formatting</Description>
-    <VersionPrefix>0.0.2</VersionPrefix>
+    <Version>0.0.2-beta</Version>
     <Authors>Alex Martossy</Authors>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageTags>serilog;json;utf8jsonwriter;system.text.json</PackageTags>
@@ -22,9 +22,9 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
-    <!--    <None Include="../assets/icon.png" Pack="true" Visible="false" PackagePath="/" />-->
-    <None Include="../README.md" Pack="true" Visible="false" PackagePath="/"/>
-    <None Include="../LICENSE" Pack="true" Visible="false" PackagePath="/"/>
+    <!--    <None Include="../../assets/icon.png" Pack="true" Visible="false" PackagePath="/" />-->
+    <None Include="../../README.md" Pack="true" Visible="false" PackagePath="/"/>
+    <None Include="../../LICENSE" Pack="true" Visible="false" PackagePath="/"/>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
   </ItemGroup>
   <ItemGroup>

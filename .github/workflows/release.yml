@@ -1,0 +1,155 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+permissions: { }
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_NOLOGO: true
+  dotnet: 8.0.x
+  node: 20.x
+  Project: src/Serilog.Extensions.Formatting
+  PackageJson: src/Serilog.Extensions.Formatting/package.json
+  Csproj: src/Serilog.Extensions.Formatting/Serilog.Extensions.Formatting.csproj
+  PackageName: alexaka1.serilog.extensions.formatting
+jobs:
+  test:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    name: Tests
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+        dotnet:
+          - 8.0.x
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@17d0e2bd7d51742c71671bd19fa12bdc9d40a3d6 # v2.8.1
+        with:
+          egress-policy: audit
+          disable-telemetry: true
+      - name: Checkout code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          persist-credentials: false
+      - name: Setup Dotnet ${{ matrix.dotnet }}
+        id: dotnet-setup
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+      - name: Dotnet restore
+        run: dotnet restore --locked-mode
+      - name: Dotnet build
+        run: dotnet build --configuration Release --no-restore
+      - name: Test with dotnet
+        run: dotnet test --configuration Release --no-restore --logger "trx;LogFileName=test-results.trx" --results-directory "TestResults"
+      - uses: dorny/test-reporter@v1
+        name: Upload dotnet test results summary
+        with:
+          name: dotnet-${{ steps.dotnet-setup.outputs.dotnet-version }}-tests-on-${{ matrix.os }}
+          path: TestResults/*.trx
+          reporter: dotnet-trx
+      - name: Upload dotnet test results artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-${{ steps.dotnet-setup.outputs.dotnet-version }}-tests-on-${{ matrix.os }}
+          path: TestResults
+        if: ${{ always() }}
+  check-release:
+    if: github.event_name == 'push'
+    name: Prepare release
+    runs-on: ubuntu-24.04
+    permissions:
+      pull-requests: write
+      contents: write
+      issues: read
+    outputs:
+      publishable: ${{ steps.pack.outputs.canPack == 'true'}}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@17d0e2bd7d51742c71671bd19fa12bdc9d40a3d6 # v2.8.1
+        with:
+          egress-policy: audit
+          disable-telemetry: true
+      - name: Checkout code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          persist-credentials: false
+      - name: Setup Dotnet ${{ env.dotnet }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.dotnet }}
+      - name: Setup Node.js ${{ env.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.node }}
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Yarn install
+        run: yarn install --immutable
+      - name: Create Release Pull Request or Allow Pack
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          # outputs versionExists=true if version already exists on nuget
+          version: yarn run version ${{ env.PackageJson }} ${{ env.Csproj }} ${{ env.PackageName }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Can pack?
+        id: pack
+        if: steps.changesets.outputs.hasChangesets == 'false' && steps.changesets.outputs.versionExists != 'true'
+        run: echo "canPack=true" >> "$GITHUB_OUTPUT"
+      - name: Dotnet restore
+        if: steps.pack.outputs.canPack == 'true'
+        run: dotnet restore ${{ env.Project }} --locked-mode
+      - name: Dotnet build
+        if: steps.pack.outputs.canPack == 'true'
+        run: dotnet build ${{ env.Project }} --configuration Release --no-restore
+      - name: Pack nuget
+        if: steps.pack.outputs.canPack == 'true'
+        run: dotnet pack ${{ env.Project }} -c Release -o ${{ github.workspace }}/artifacts
+      - name: Upload nuget
+        if: steps.pack.outputs.canPack == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget
+          path: ${{ github.workspace }}/artifacts
+          if-no-files-found: error
+  release:
+    name: Release nuget
+    runs-on: ubuntu-latest
+    if: needs.check-release.outputs.publishable == 'true'
+    needs:
+      - check-release
+      - test
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@17d0e2bd7d51742c71671bd19fa12bdc9d40a3d6 # v2.8.1
+        with:
+          egress-policy: audit
+          disable-telemetry: true
+      - name: Download nuget
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget
+          path: ${{ github.workspace }}/artifacts
+          github-token: ${{ github.token }}
+      - name: Setup Dotnet ${{ env.dotnet }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.dotnet }}
+      - name: Publish Nuget
+        run: dotnet nuget push ${{ github.workspace }}/artifacts/*.nupkg -s https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_API_KEY }}
