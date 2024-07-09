@@ -8,13 +8,18 @@ permissions: { }
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
   DOTNET_NOLOGO: true
-  dotnet: 8.0.x
+  dotnet: 8.0.302
   node: 20.x
   Project: src/Serilog.Extensions.Formatting
   PackageJson: src/Serilog.Extensions.Formatting/package.json
   Csproj: src/Serilog.Extensions.Formatting/Serilog.Extensions.Formatting.csproj
   PackageName: alexaka1.serilog.extensions.formatting
 jobs:
+  tests:
+    name: Tests
+    uses: ./.github/workflows/tests.yml
+    permissions:
+      contents: read
   check-release:
     name: Prepare release
     runs-on: ubuntu-24.04
@@ -88,6 +93,7 @@ jobs:
     if: needs.check-release.outputs.publishable == 'true'
     needs:
       - check-release
+      - tests
     permissions:
       contents: read
     steps:
