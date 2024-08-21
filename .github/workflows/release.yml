@@ -29,6 +29,7 @@ jobs:
       issues: read
     outputs:
       publishable: ${{ steps.pack.outputs.canPack == 'true'}}
+      version: ${{ steps.pack.outputs.version }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@5c7944e73c4c2a096b17a9cb74d65b6c2bbafbde # v2.9.1
@@ -77,6 +78,7 @@ jobs:
         run: |
           set -e
           VERSION=$(jq -r '.version' "${{ env.PackageJson }}")
+          echo "version=v$VERSION" >> "$GITHUB_OUTPUT"
           AVAILABLE_VERSIONS=$(curl -s "https://api.nuget.org/v3-flatcontainer/${{ env.PackageName }}/index.json" | jq -r '.versions[]')
           if echo "$AVAILABLE_VERSIONS" | grep -q "^$VERSION$"; then
             echo "canPack=false" >> "$GITHUB_OUTPUT"
@@ -100,19 +102,32 @@ jobs:
           path: ${{ github.workspace }}/artifacts
           if-no-files-found: error
   release:
-    name: Release nuget
+    name: Release package
     runs-on: ubuntu-latest
     if: needs.check-release.outputs.publishable == 'true'
     needs:
       - check-release
       - tests
     permissions:
-      contents: read
+      contents: write
+    env:
+      email: actions.github@mail.martossy.hu
+      name: GitHub Actions (alexaka1)
+      changelog: src/Serilog.Extensions.Formatting/CHANGELOG.md
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@5c7944e73c4c2a096b17a9cb74d65b6c2bbafbde # v2.9.1
         with:
           egress-policy: audit
+      - name: Git identity
+        run: |
+          git config --global user.email "${{ env.email }}"
+          git config --global user.name "${{ env.name }}"
+      - name: Checkout code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          # we use credentials to push tags below
+          persist-credentials: true
       - name: Download nuget
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
@@ -125,3 +140,46 @@ jobs:
           dotnet-version: ${{ env.dotnet }}
       - name: Publish Nuget
         run: dotnet nuget push ${{ github.workspace }}/artifacts/*.nupkg -s https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_API_KEY }}
+      - name: Create changelog for release
+        id: changelog
+        run: |
+          input_file="${{ env.changelog }}"
+          output_file="changes.md"
+          # Find the line number of the first version heading
+          start_line=$(grep -nE '^## [0-9]+\.[0-9]+\.[0-9]' "$input_file" | head -n 1 | cut -d: -f1)
+
+          # Find the line number of the next version heading, if it exists
+          end_line=$(grep -nE '^## [0-9]+\.[0-9]+\.[0-9]' "$input_file" | sed -n '2p' | cut -d: -f1)
+
+          if [ -z "$end_line" ]; then
+            # If there is no next version, extract till the end of the file
+            sed -n "${start_line},\$p" "$input_file" > "$output_file"
+          else
+            # Extract only the section for the uppermost version
+            sed -n "${start_line},$(($end_line-1))p" "$input_file" > "$output_file"
+          fi
+          echo "changes=$output_file" >> "$GITHUB_OUTPUT"
+          prerelease=false
+          if [ -f ".changeset/pre.json" ]; then
+            prerelease=true
+          fi
+      - name: Tag release
+        run: |
+          git tag -a ${{ needs.check-release.outputs.version }} -m "Release ${{ needs.check-release.outputs.version }}"
+          git push origin ${{ needs.check-release.outputs.version }}
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ github.workspace }}/artifacts/*.nupkg
+            ${{ github.workspace }}/artifacts/*.snupkg
+            ${{ env.changelog }}
+          body_path: ${{ steps.changelog.outputs.changes }}
+          body: Oh no, it looks like the change-notes were not generated correctly by the action.
+          draft: false
+          prerelease: ${{ steps.changelog.outputs.prerelease == 'true' }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          append_body: true
+          tag_name: ${{ needs.check-release.outputs.version }}
+          target_commitish: ${{ github.sha }}
