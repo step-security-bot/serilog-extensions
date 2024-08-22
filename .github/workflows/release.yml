@@ -73,6 +73,7 @@ jobs:
         with:
           # outputs versionExists=true if version already exists on nuget
           version: yarn run version ${{ env.PackageJson }} ${{ env.Csproj }}
+          setupGitUser: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Can pack?
@@ -130,10 +131,6 @@ jobs:
           # we use credentials to push tags below
           persist-credentials: true
       - uses: chainguard-dev/actions/setup-gitsign@57cb0b7560d9b9b081c15ac5ef689f73f4dda03e
-      - name: Git identity
-        run: |
-          git config --global user.email "${{ env.email }}"
-          git config --global user.name "${{ env.name }}"
       - name: Download nuget
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
