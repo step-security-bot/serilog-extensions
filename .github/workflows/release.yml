@@ -168,7 +168,7 @@ jobs:
           fi
       - name: Tag release
         run: |
-          git tag -as ${{ needs.check-release.outputs.version }} -m "Release ${{ needs.check-release.outputs.version }}"
+          git tag -s ${{ needs.check-release.outputs.version }} -m "Release ${{ needs.check-release.outputs.version }}"
           git push origin ${{ needs.check-release.outputs.version }}
       - name: Create GitHub release
         uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
