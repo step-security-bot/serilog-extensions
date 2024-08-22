@@ -1,22 +1,115 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Serilog.Events;
+using Serilog.Formatting.Json;
 using Serilog.Parsing;
 using Serilog.Templates;
 using Xunit.Abstractions;
 
 namespace Serilog.Extensions.Formatting.Test;
 
-public class Utf8JsonFormatterTests
+public class Utf8JsonFormatterTests(ITestOutputHelper output)
 {
-    public Utf8JsonFormatterTests(ITestOutputHelper output)
+    private readonly DateTimeOffset _dateTimeOffset = new(new DateTime(1970, 1, 1), TimeSpan.Zero);
+
+    [Theory]
+    [MemberData(nameof(LogEvents))]
+    public void RendersSameJsonAsJsonFormatter(LogEvent e)
     {
-        _output = output;
+        var json = new JsonFormatter(renderMessage: true);
+        var utf8 = new Utf8JsonFormatter(renderMessage: true,
+            // fix Unicode escaping for the tests
+            jsonWriterEncoder: JavaScriptEncoder.UnsafeRelaxedJsonEscaping);
+
+        var jsonB = new StringWriter();
+        var utf8B = new StringWriter();
+        json.Format(e, jsonB);
+        utf8.Format(e, utf8B);
+        jsonB.Flush();
+        utf8B.Flush();
+        string expected = jsonB.ToString();
+        string actual = utf8B.ToString();
+        output.WriteLine("Json:");
+        output.WriteLine(expected);
+        output.WriteLine("Utf8:");
+        output.WriteLine(actual);
+        Assert.Equal(expected, actual);
     }
 
-    private readonly ITestOutputHelper _output;
-    private readonly DateTimeOffset _dateTimeOffset = new(new DateTime(1970, 1, 1), TimeSpan.Zero);
+    public static TheoryData<LogEvent> LogEvents()
+    {
+        var p = new MessageTemplateParser();
+        return new TheoryData<LogEvent>
+        {
+            new LogEvent(Some.OffsetInstant(), LogEventLevel.Information, null,
+                p.Parse("Value: {AProperty}"),
+                [
+                    new LogEventProperty("AProperty", new ScalarValue(12)),
+                ]),
+            new LogEvent(DateTimeOffset.UtcNow, LogEventLevel.Verbose,
+                new Exception("test") { Data = { ["testData"] = "test2" } },
+                p.Parse(
+                    "My name is {Name}, I'm {Age} years old, and I live in {City}, and the time is {Time:HH:mm:ss}"),
+                [
+                    new LogEventProperty("Name", new ScalarValue("John Doe")),
+                    new LogEventProperty("Age", new ScalarValue(42)),
+                    new LogEventProperty("City", new ScalarValue("London")),
+                    new LogEventProperty("Time",
+                        // DateTimes are trimmed, we test this case elsewhere
+                        new ScalarValue(DateTimeOffset.Parse("2023-01-01T12:34:56.7891111+01:00"))
+                    ),
+                ]),
+            new LogEvent(DateTimeOffset.UtcNow, LogEventLevel.Verbose,
+                new Exception("test") { Data = { ["testData"] = "test2" } },
+                p.Parse(
+                    "My name is {Name}, I'm {Age} years old, and I live in {City}, and the time is {Time:HH:mm:ss}"),
+                [
+                    new LogEventProperty("Name", new ScalarValue("John Doe")),
+                    new LogEventProperty("Age", new ScalarValue(42)),
+                    new LogEventProperty("City", new ScalarValue("London")),
+                    new LogEventProperty("Time",
+                        new ScalarValue(DateTime.Parse("2023-01-01T12:34:56.7891111+01:00"))
+                    ),
+                ]),
+            new LogEvent(DateTimeOffset.UtcNow, LogEventLevel.Debug,
+                new Exception("test") { Data = { ["testData"] = "test2" } },
+                p.Parse(
+                    "I have {Count} fruits, which are {Fruits}"),
+                [
+                    new LogEventProperty("Count", new ScalarValue(3)),
+                    new LogEventProperty("Fruits",
+                        new SequenceValue([
+                                new ScalarValue("apple"), new ScalarValue("banana"), new ScalarValue("cherry"),
+                            ]
+                        )
+                    ),
+                ]
+            ),
+            new LogEvent(DateTimeOffset.UtcNow, LogEventLevel.Information,
+                new Exception("test") { Data = { ["testData"] = "test2" } },
+                p.Parse(
+                    "I have {Fruit,-20} fruits"),
+                [
+                    new LogEventProperty("Fruit", new ScalarValue("apple")),
+                ]
+            ),
+            new LogEvent(DateTimeOffset.UtcNow, LogEventLevel.Information,
+                new Exception("test") { Data = { ["testData"] = "test2" } },
+                p.Parse(
+                    "I have {@Fruit,-40} fruits, {Hello:u3}"),
+                [
+                    new LogEventProperty("Fruit", new StructureValue([
+                                new LogEventProperty("apple", new ScalarValue("apple")),
+                            ]
+                        )
+                    ),
+                    new LogEventProperty("Hello", new ScalarValue("Hello World")),
+                ]
+            ),
+        };
+    }
 
     [Fact]
     public void CamelCase()
@@ -56,7 +149,7 @@ public class Utf8JsonFormatterTests
             ActivitySpanId.CreateFromUtf8String("fcfb4c32a12a3532"u8)), writer);
         writer.Flush();
         string message = Encoding.UTF8.GetString(stream.ToArray().AsSpan());
-        _output.WriteLine(message);
+        output.WriteLine(message);
         Helpers.AssertValidJson(message);
     }
 
@@ -78,7 +171,7 @@ public class Utf8JsonFormatterTests
             ActivitySpanId.CreateFromUtf8String("fcfb4c32a12a3532"u8)), writer);
         writer.Flush();
         string message = Encoding.UTF8.GetString(sb.ToArray());
-        _output.WriteLine(message);
+        output.WriteLine(message);
         Helpers.AssertValidJson(message);
     }
 
@@ -171,46 +264,38 @@ public class Utf8JsonFormatterTests
             new Utf8JsonFormatter(null, true);
         using var stream = new MemoryStream();
         using var writer = new StreamWriter(stream);
-        formatter.Format(new LogEvent(_dateTimeOffset, LogEventLevel.Debug, new AggregateException([
+        formatter.Format(new LogEvent(_dateTimeOffset, LogEventLevel.Debug, new AggregateException(
                 new Exception("test"), new InvalidOperationException("test2", new ArgumentException("test3")
                 {
                     Data = { ["test"] = "test2" },
-                }),
-                new Exception("test"), new InvalidOperationException("test2", new ArgumentException("test3")
+                }), new Exception("test"), new InvalidOperationException("test2", new ArgumentException("test3")
                 {
                     Data = { ["test"] = "test2" },
-                }),
-                new Exception("test"), new InvalidOperationException("test2", new ArgumentException("test3")
+                }), new Exception("test"), new InvalidOperationException("test2", new ArgumentException("test3")
                 {
                     Data = { ["test"] = "test2" },
-                }),
-                new Exception("test"), new InvalidOperationException("test2", new ArgumentException("test3")
+                }), new Exception("test"), new InvalidOperationException("test2", new ArgumentException("test3")
                 {
                     Data = { ["test"] = "test2" },
-                }),
-                new Exception("test"), new InvalidOperationException("test2", new ArgumentException("test3")
+                }), new Exception("test"), new InvalidOperationException("test2", new ArgumentException("test3")
                 {
                     Data = { ["test"] = "test2" },
-                }),
-                new Exception("test"), new InvalidOperationException("test2", new ArgumentException("test3")
+                }), new Exception("test"), new InvalidOperationException("test2", new ArgumentException("test3")
                 {
                     Data = { ["test"] = "test2" },
-                }),
-                new Exception("test"), new InvalidOperationException("test2", new ArgumentException("test3")
+                }), new Exception("test"), new InvalidOperationException("test2", new ArgumentException("test3")
                 {
                     Data = { ["test"] = "test2" },
-                }),
-                new Exception("test"), new InvalidOperationException("test2", new ArgumentException("test3")
+                }), new Exception("test"), new InvalidOperationException("test2", new ArgumentException("test3")
                 {
                     Data = { ["test"] = "test2" },
-                }),
-            ]),
+                })),
             new MessageTemplate("hello world", []), [new LogEventProperty("hello", new ScalarValue("world"))],
             ActivityTraceId.CreateFromUtf8String("3653d3ec94d045b9850794a08a4b286f"u8),
             ActivitySpanId.CreateFromUtf8String("fcfb4c32a12a3532"u8)), writer);
         writer.Flush();
         string message = Encoding.UTF8.GetString(stream.ToArray().AsSpan());
-        _output.WriteLine(message);
+        output.WriteLine(message);
         Helpers.AssertValidJson(message);
     }
 }
