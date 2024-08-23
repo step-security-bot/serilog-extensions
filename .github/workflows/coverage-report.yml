@@ -46,8 +46,12 @@ jobs:
           cat code-coverage-results.md >> code-coverage-results-${{ matrix.os }}.md
       - name: Add Coverage PR Comment
         uses: marocchino/sticky-pull-request-comment@v2
-        if: github.event_name == 'pull_request'
+        if: github.event.workflow_run.pull_requests[0].number
         with:
           recreate: true
           path: code-coverage-results-${{ matrix.os }}.md
           header: ${{ matrix.os }}
+          number: ${{ github.event.workflow_run.pull_requests[0].number }}
+      - name: Write coverage summary
+        run: |
+          cat code-coverage-results-${{ matrix.os }}.md >> $GITHUB_STEP_SUMMARY
