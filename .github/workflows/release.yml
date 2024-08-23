@@ -12,6 +12,9 @@ env:
   PackageJson: src/Serilog.Extensions.Formatting/package.json
   Csproj: src/Serilog.Extensions.Formatting/Serilog.Extensions.Formatting.csproj
   PackageName: alexaka1.serilog.extensions.formatting
+  YARN_ENABLE_HARDENED_MODE: 1
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
 jobs:
   tests:
     name: Tests
@@ -79,6 +82,7 @@ jobs:
       - name: Can pack?
         id: pack
         if: steps.changesets.outputs.hasChangesets == 'false'
+        shell: bash
         run: |
           set -e
           VERSION=$(jq -r '.version' "${{ env.PackageJson }}")
@@ -117,8 +121,6 @@ jobs:
       contents: write
       id-token: write
     env:
-      email: actions.github@mail.martossy.hu
-      name: GitHub Actions (alexaka1)
       changelog: src/Serilog.Extensions.Formatting/CHANGELOG.md
     steps:
       - name: Harden Runner
@@ -145,6 +147,7 @@ jobs:
         run: dotnet nuget push ${{ github.workspace }}/artifacts/*.nupkg -s https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_API_KEY }}
       - name: Create changelog for release
         id: changelog
+        shell: bash
         run: |
           input_file="${{ env.changelog }}"
           output_file="changes.md"

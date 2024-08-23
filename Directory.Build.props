@@ -1,10 +1,10 @@
 <Project>
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
+    <TargetFrameworks>net8.0;net6.0;netstandard2.0</TargetFrameworks>
+    <LangVersion>7.3</LangVersion>
     <AnalysisLevel>latest</AnalysisLevel>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
     <ImportDirectoryBuildProps>false</ImportDirectoryBuildProps>
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -26,4 +26,11 @@
       <_Parameter1>$(MSBuildProjectName).Test</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
+
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
+    <DefineConstants>$(DefineConstants);FEATURE_SPAN;FEATURE_DATE_AND_TIME_ONLY;FEATURE_ISPANFORMATTABLE;</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'net8.0' ">
+    <DefineConstants>$(DefineConstants);FEATURE_SPAN;FEATURE_DATE_AND_TIME_ONLY;FEATURE_ISPANFORMATTABLE;FEATURE_JSON_NAMING_POLICY;</DefineConstants>
+  </PropertyGroup>
 </Project>
