@@ -2,11 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Serilog.Events;
+using Serilog.Formatting;
 using Serilog.Formatting.Json;
 using Serilog.Parsing;
 using Serilog.Templates;
@@ -231,22 +234,6 @@ namespace Serilog.Extensions.Formatting.Test
         }
 
         [Fact]
-        public async Task UseAfterDisposeAsyncShouldThrow()
-        {
-            var formatter = new Utf8JsonFormatter();
-            await formatter.DisposeAsync();
-            Assert.Throws<ObjectDisposedException>(() => formatter.Format(Some.LogEvent(), new StringWriter()));
-        }
-
-        [Fact]
-        public void UseAfterDisposeShouldThrow()
-        {
-            var formatter = new Utf8JsonFormatter();
-            formatter.Dispose();
-            Assert.Throws<ObjectDisposedException>(() => formatter.Format(Some.LogEvent(), new StringWriter()));
-        }
-
-        [Fact]
         public void WithException()
         {
             var formatter =
@@ -388,5 +375,107 @@ namespace Serilog.Extensions.Formatting.Test
             }
         }
 #endif
+        [Theory]
+        [MemberData(nameof(ThreadSafetyMemberData))]
+        public async Task IsThreadSafe(ThreadSafetyParams @params)
+        {
+            var stringWriter = new StringWriter();
+            var logEvent = new LogEvent(_dateTimeOffset, LogEventLevel.Debug, null,
+                new MessageTemplate("hello world", new List<MessageTemplateToken>().AsReadOnly()),
+                new List<LogEventProperty> { new LogEventProperty("hello", new ScalarValue("world")) }
+                    .AsReadOnly(),
+                ActivityTraceId.CreateFromString("3653d3ec94d045b9850794a08a4b286f".AsSpan()),
+                ActivitySpanId.CreateFromString("fcfb4c32a12a3532".AsSpan()));
+            @params.Formatter.Format(logEvent, stringWriter);
+            await stringWriter.FlushAsync();
+            string expected = stringWriter.ToString();
+
+            var startSignal = new ManualResetEvent(false);
+
+            string[] results = new string[@params.Threads];
+
+            var tasks = new Task[@params.Threads];
+            for (int i = 0; i < @params.Threads; i++)
+            {
+                int taskIndex = i;
+                tasks[taskIndex] = Task.Run(() =>
+                {
+                    // Wait until the signal is given to start
+                    startSignal.WaitOne();
+                    var writer = new StringWriter();
+
+                    for (int j = 0; j < @params.Iterations; j++)
+                    {
+                        @params.Formatter.Format(logEvent, writer);
+                    }
+
+                    // Call the Format method
+                    results[taskIndex] = writer.ToString();
+                });
+            }
+
+            // Start all tasks at once
+            startSignal.Set();
+            string expectedMerged = string.Join("", Enumerable.Repeat(expected, @params.Iterations));
+
+            // Wait for all tasks to complete
+            await Task.WhenAll(tasks);
+
+            // Assert that all results are the same as expected output
+            for (int i = 0; i < @params.Threads; i++)
+            {
+                Assert.Equal(expectedMerged, results[i]);
+            }
+        }
+
+        public static TheoryData<ThreadSafetyParams> ThreadSafetyMemberData()
+        {
+            int[] threads = { 1, 10, 100, 500 };
+            int[] iterations = { 1, 100, 1000, 10000 };
+            var data = new List<ThreadSafetyParams>();
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            foreach (int thread in threads)
+            {
+                // ReSharper disable once LoopCanBeConvertedToQuery
+                foreach (int iteration in iterations)
+                {
+                    data.Add(new ThreadSafetyParams(new Utf8JsonFormatter("\n"), iteration, thread));
+                    // the Serilog formatters are thread safe, uncomment if you want to test them
+                    // data.Add(new ThreadSafetyData(new JsonFormatter("\n"), iteration, thread));
+                    // data.Add(new ThreadSafetyData(
+                    //     new ExpressionTemplate(
+                    //         "{ {Timestamp:@t,Level:@l,MessageTemplate:@mt,RenderedMessage:@m,TraceId:@tr,SpanId:@sp,Exception:@x,Properties:@p} }\n"),
+                    //     iteration, thread));
+                }
+            }
+
+            return new TheoryData<ThreadSafetyParams>(data);
+        }
+    }
+
+    [Serializable]
+    public class ThreadSafetyParams
+    {
+        [NonSerialized]
+        private ITextFormatter _formatter;
+
+        public int Threads { get; set; }
+
+        public int Iterations { get; set; }
+        public string Name => Formatter.GetType().Name;
+
+
+        public ITextFormatter Formatter
+        {
+            get => _formatter;
+            set => _formatter = value;
+        }
+
+        public ThreadSafetyParams(ITextFormatter formatter, int iterations, int threads)
+        {
+            Formatter = formatter;
+            Iterations = iterations;
+            Threads = threads;
+        }
     }
 }
