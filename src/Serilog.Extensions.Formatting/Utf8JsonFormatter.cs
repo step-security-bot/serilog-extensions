@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Threading;
 using Serilog.Events;
 using Serilog.Formatting;
 using Serilog.Parsing;
@@ -15,17 +16,20 @@ namespace Serilog.Extensions.Formatting
     /// <summary>
     ///     Formats log events in a simple JSON structure using <see cref="System.Text.Json.Utf8JsonWriter" />.
     /// </summary>
-    public class Utf8JsonFormatter : ITextFormatter
+    public sealed class Utf8JsonFormatter : ITextFormatter, IDisposable
     {
         private readonly string _closingDelimiter;
         private readonly CultureInfo _formatProvider;
-        private readonly JsonWriterOptions _jsonWriterOptions;
         private readonly JsonLogPropertyNames _names;
         private readonly JsonNamingPolicy _namingPolicy;
         private readonly bool _renderMessage;
+        private readonly ThreadLocal<StringBuilder> _sb;
 
         // ReSharper disable once NotAccessedField.Local
         private readonly int _spanBufferSize;
+        private readonly ThreadLocal<StringWriter> _sw;
+        private readonly ThreadLocal<Utf8JsonWriter> _writer;
+        private Utf8JsonWriter Writer => _writer.Value;
         private const string TimeFormat = "O";
         private const string TimeSpanFormat = "c";
 #if FEATURE_DATE_AND_TIME_ONLY
@@ -74,11 +78,20 @@ namespace Serilog.Extensions.Formatting
             _spanBufferSize = spanBufferSize;
             _closingDelimiter = closingDelimiter ?? Environment.NewLine;
             _formatProvider = formatProvider as CultureInfo ?? CultureInfo.InvariantCulture;
-            _jsonWriterOptions = new JsonWriterOptions
+            var jsonWriterOptions = new JsonWriterOptions
             {
                 SkipValidation = skipValidation,
                 Encoder = jsonWriterEncoder,
             };
+            _writer = new ThreadLocal<Utf8JsonWriter>(() => new Utf8JsonWriter(Stream.Null, jsonWriterOptions));
+            _sb = new ThreadLocal<StringBuilder>(() => new StringBuilder());
+            _sw = new ThreadLocal<StringWriter>(() => new StringWriter(_sb.Value));
+        }
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            Dispose(true);
         }
 
         /// <inheritdoc />
@@ -155,7 +168,6 @@ namespace Serilog.Extensions.Formatting
             if (tokensWithFormat.Length != 0)
             {
                 writer.WriteStartObject(_names.Renderings);
-
                 WriteRenderingsObject(tokensWithFormat, logEvent.Properties, writer);
                 writer.WriteEndObject();
             }
@@ -185,7 +197,8 @@ namespace Serilog.Extensions.Formatting
         /// <returns>The <see cref="Utf8JsonWriter" /> instance.</returns>
         private Utf8JsonWriter GetWriter(Stream stream)
         {
-            return new Utf8JsonWriter(stream, _jsonWriterOptions);
+            Writer.Reset(stream);
+            return Writer;
         }
 
         private void Format<TState>(TState value, Utf8JsonWriter writer) where TState : class
@@ -440,33 +453,28 @@ namespace Serilog.Extensions.Formatting
         private void WriteRenderingsObject(ReadOnlySpan<IGrouping<string, PropertyToken>> tokensWithFormat,
             IReadOnlyDictionary<string, LogEventPropertyValue> properties, Utf8JsonWriter writer)
         {
-            var sb = new StringBuilder();
-            using (var sw = new StringWriter(sb))
+            foreach (var propertyFormats in tokensWithFormat)
             {
-                foreach (var propertyFormats in tokensWithFormat)
+                writer.WriteStartArray(propertyFormats.Key);
+                foreach (var format in propertyFormats)
                 {
-                    writer.WriteStartArray(propertyFormats.Key);
-                    foreach (var format in propertyFormats)
-                    {
-                        writer.WriteStartObject();
-                        writer.WriteString(_names.Format, format.Format);
-                        writer.WritePropertyName(_names.Rendering);
-                        RenderPropertyToken(format, properties, new RenderProps(writer, sw));
-                        sb.Clear();
-                        writer.WriteEndObject();
-                    }
-
-                    writer.WriteEndArray();
+                    writer.WriteStartObject();
+                    writer.WriteString(_names.Format, format.Format);
+                    writer.WritePropertyName(_names.Rendering);
+                    RenderPropertyToken(format, properties, writer);
+                    writer.WriteEndObject();
                 }
+
+                writer.WriteEndArray();
             }
         }
 
         private void RenderPropertyToken(PropertyToken pt,
-            IReadOnlyDictionary<string, LogEventPropertyValue> properties, RenderProps writer)
+            IReadOnlyDictionary<string, LogEventPropertyValue> properties, Utf8JsonWriter writer)
         {
             if (!properties.TryGetValue(pt.PropertyName, out var propertyValue))
             {
-                writer.Utf8JsonWriter.WriteStringValue(pt.ToString());
+                writer.WriteStringValue(pt.ToString());
                 return;
             }
 
@@ -474,29 +482,33 @@ namespace Serilog.Extensions.Formatting
         }
 
         private void RenderValue(LogEventPropertyValue propertyValue,
-            string format, RenderProps writer)
+            string format, Utf8JsonWriter writer)
         {
             var value = propertyValue as ScalarValue;
             if (value?.Value is string str)
             {
-                writer.Utf8JsonWriter.WriteStringValue(str);
+                writer.WriteStringValue(str);
                 return;
             }
 
-            propertyValue.Render(writer.StringWriter, format, _formatProvider);
-            writer.Utf8JsonWriter.WriteStringValue(writer.StringWriter.ToString());
+            propertyValue.Render(_sw.Value, format, _formatProvider);
+            writer.WriteStringValue(_sw.Value.ToString());
+            _sb.Value.Clear();
         }
-    }
 
-    internal struct RenderProps
-    {
-        public Utf8JsonWriter Utf8JsonWriter { get; }
-        public StringWriter StringWriter { get; }
-
-        public RenderProps(Utf8JsonWriter utf8JsonWriter, StringWriter stringWriter)
+        private void Dispose(bool disposing)
         {
-            Utf8JsonWriter = utf8JsonWriter;
-            StringWriter = stringWriter;
+            if (!disposing)
+            {
+                return;
+            }
+
+            _writer.Value.Dispose();
+            _writer.Dispose();
+
+            _sw.Value.Dispose();
+            _sw.Dispose();
+            _sb.Dispose();
         }
     }
 }
